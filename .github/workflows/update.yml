@@ -38,6 +38,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MAX_PER_RUN: ${{ vars.MAX_PER_RUN }}
+          MAX_SECONDS: ${{ vars.MAX_SECONDS }}
+          REQUEST_INTERVAL: ${{ vars.REQUEST_INTERVAL }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           APP_URL: ${{ vars.APP_URL }}
         run: python scripts/update.py

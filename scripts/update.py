@@ -7,7 +7,9 @@
   GEMINI_API_KEY      必須。Google AI Studio で発行した API キー
   GEMINI_MODEL        既定 gemini-3.8-flash
   GEMINI_FALLBACK_MODELS  カンマ区切り。モデルが 404 のとき順に試す
-  VIDEO_FPS           既定 0.25（トーク番組は画より音声が重要なので低 fps で節約）
+  VIDEO_FPS           既定 0.1（トーク番組は画より音声が重要なので低 fps で節約）
+  MAX_SECONDS         1本あたり解析する最大秒数。既定 6000（無料枠の TPM 250K に収まる長さ）。0 で無制限
+  REQUEST_INTERVAL    Gemini へのリクエスト間隔（秒）。既定 65（無料枠の分あたり上限対策）
   MAX_PER_RUN         1 回の実行で要約する最大本数。既定 8
   FIRST_RUN_DAYS      初回登録時に要約対象とする過去日数。既定 2
   MIN_AGE_MINUTES     公開直後の動画は待つ（ライブ配信・プレミア対策）。既定 30
@@ -274,69 +276,102 @@ def gemini_summarize(http: Http, api_key: str, model: str, video: dict,
                      "output_tokens": usage.get("candidatesTokenCount")}
 
 
-def is_too_long_error(msg: str) -> bool:
-    m = msg.lower()
-    return "token" in m and ("exceed" in m or "too long" in m or "maximum" in m)
-
-
-def summarize_with_fallbacks(http: Http, api_key: str, models: list[str], video: dict,
-                             fps: float) -> tuple[dict, dict]:
-    last_err: Exception | None = None
-    overloaded: Overloaded | None = None
-    for model in models:
-        try:
-            try:
-                return _with_overload_retry(lambda: gemini_summarize(http, api_key, model, video, fps))
-            except RuntimeError as e:
-                if not is_too_long_error(str(e)):
-                    raise
-                # 長尺動画: fps を下げ、先頭 3 時間に制限して再試行
-                log(f"  長尺のため fps=0.1, 先頭3時間で再試行: {video['video_id']}")
-                summary, meta = gemini_summarize(http, api_key, model, video, 0.1, end_offset="10800s")
-                meta["truncated"] = True
-                return summary, meta
-        except ModelNotFound as e:
-            log(f"  [warn] モデル {e} が見つかりません。次の候補へ")
-            last_err = e
-            continue
-        except Overloaded as e:
-            log(f"  [warn] {model} が混雑中。次の候補へ: {str(e)[:120]}")
-            overloaded = e
-            continue
-    if overloaded:
-        raise overloaded
-    raise RuntimeError(f"利用可能なモデルがありません: {last_err}")
-
-
-def _with_overload_retry(fn, wait: int = 20):
-    """混雑エラーは同じモデルで1回だけ待って再試行する。"""
-    try:
-        return fn()
-    except Overloaded as e:
-        log(f"  混雑のため{wait}秒待って再試行: {str(e)[:120]}")
-        time.sleep(wait)
-        return fn()
-
-
 def is_daily_quota(msg: str) -> bool:
     m = msg.lower()
     return "perday" in m or "per day" in m or "daily" in m
 
 
-def summarize_lite(http: Http, api_key: str, models: list[str], video: dict) -> tuple[dict, dict]:
-    """分あたりトークン上限に収めるため fps 0.1・先頭90分（約30万トークン以下）で要約する。"""
-    last: Exception | None = None
-    for model in models:
-        try:
-            summary, meta = gemini_summarize(http, api_key, model, video, 0.1, end_offset="5400s")
-            meta["truncated"] = True
-            meta["truncated_to"] = "90分"
-            return summary, meta
-        except (ModelNotFound, Overloaded) as e:
-            last = e
-    if isinstance(last, Overloaded):
-        raise last
-    raise RuntimeError(f"利用可能なモデルがありません: {last}")
+class AllModelsExhausted(Exception):
+    """全モデルが1日の上限に達した。"""
+
+
+class Summarizer:
+    """無料枠（例: 5 RPM / 250K TPM / 20 RPD / モデル）に合わせてリクエストを配分する。
+
+    - リクエスト間隔を interval 秒空ける（TPM は1分単位なので既定 65 秒）
+    - 長尺動画は先頭 max_seconds 秒に切って 1 リクエストを TPM 内に収める
+    - 1日の上限に達したモデルはこの実行中は使わず、次のモデルへ
+    - 分あたり上限は 65 秒待って同じモデルで 1 回だけ再試行
+    - 503 等は 30 秒待って 1 回だけ再試行し、だめなら次のモデルへ
+    """
+
+    def __init__(self, http: Http, api_key: str, models: list[str], fps: float,
+                 max_seconds: int, interval: float):
+        self.http, self.api_key, self.models = http, api_key, models
+        self.fps, self.max_seconds, self.interval = fps, max_seconds, interval
+        self.exhausted: set[str] = set()
+        self.calls = 0
+        self._last = 0.0
+
+    def _pace(self) -> None:
+        wait = self._last + self.interval - time.monotonic()
+        if self._last and wait > 0:
+            time.sleep(wait)
+        self._last = time.monotonic()
+
+    def _call(self, model: str, video: dict, end_offset: str | None):
+        self._pace()
+        self.calls += 1
+        return gemini_summarize(self.http, self.api_key, model, video, self.fps, end_offset)
+
+    def summarize(self, video: dict) -> tuple[dict, dict]:
+        dur = video.get("duration")
+        clip = bool(self.max_seconds) and (dur is None or dur > self.max_seconds)
+        end_offset = f"{self.max_seconds}s" if clip else None
+        last: Exception | None = None
+        for model in self.models:
+            if model in self.exhausted:
+                continue
+            for attempt in range(2):
+                try:
+                    summary, meta = self._call(model, video, end_offset)
+                    if clip and (dur is None or dur > self.max_seconds):
+                        meta["analyzed_until"] = f"{self.max_seconds // 60}分"
+                        meta["truncated"] = dur is not None
+                    return summary, meta
+                except ModelNotFound:
+                    log(f"  [warn] モデル {model} が見つかりません")
+                    self.exhausted.add(model)
+                    break
+                except QuotaExceeded as e:
+                    last = e
+                    if is_daily_quota(str(e)):
+                        log(f"  [quota] {model} は本日の上限に到達。次のモデルへ")
+                        self.exhausted.add(model)
+                        break
+                    if attempt == 0:
+                        log(f"  [quota] {model} 分あたり上限。65秒待って再試行")
+                        time.sleep(65)
+                        continue
+                    break
+                except Overloaded as e:
+                    last = e
+                    if attempt == 0:
+                        log(f"  [busy] {model} 混雑。30秒待って再試行")
+                        time.sleep(30)
+                        continue
+                    break
+        if all(m in self.exhausted for m in self.models):
+            raise AllModelsExhausted("全モデルが本日の上限に到達")
+        if isinstance(last, QuotaExceeded):
+            raise last
+        raise Overloaded(str(last) if last else "不明なエラー")
+
+
+def fetch_watch_info(http: Http, video_id: str) -> dict:
+    """watch ページから長さ・配信状態を取る。失敗しても空 dict を返す（要約は続行）。"""
+    status, html = http.get(f"https://www.youtube.com/watch?v={video_id}", timeout=20)
+    if status != 200:
+        return {}
+    info: dict = {}
+    m = re.search(r'"lengthSeconds":"(\d+)"', html)
+    if m:
+        info["duration"] = int(m.group(1))
+    if '"isUpcoming":true' in html:
+        info["upcoming"] = True
+    if '"isLiveNow":true' in html:
+        info["live_now"] = True
+    return info
 
 
 def dummy_summary(video: dict) -> tuple[dict, dict]:
@@ -396,7 +431,10 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
         m.strip() for m in (os.environ.get("GEMINI_FALLBACK_MODELS") or "gemini-3.6-flash,gemini-3.5-flash").split(",")
         if m.strip()]
     models = list(dict.fromkeys(models))
-    fps = env_float("VIDEO_FPS", 0.25)
+    fps = env_float("VIDEO_FPS", 0.1)
+    # 無料枠 TPM 250K に収まる長さ（fps0.1 で約 39 トークン/秒 → 100分 ≈ 23万）。0 で無制限
+    max_seconds = env_int("MAX_SECONDS", 6000)
+    interval = env_float("REQUEST_INTERVAL", 65)
     max_per_run = env_int("MAX_PER_RUN", 8)
     first_run_days = env_int("FIRST_RUN_DAYS", 2)
     min_age = timedelta(minutes=env_int("MIN_AGE_MINUTES", 30))
@@ -446,52 +484,42 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
          and now - parse_iso(v["published"]) >= min_age),
         key=lambda v: v["published"], reverse=True)
     done_now: list[dict] = []
-    tries = 0
-    consecutive_429 = 0
+    summarizer = Summarizer(http, api_key, models, fps, max_seconds, interval)
     consecutive_busy = 0
     for v in pending:
-        if len(done_now) >= max_per_run or tries >= max_per_run * 2:
+        if len(done_now) >= max_per_run or summarizer.calls >= max_per_run * 2:
             break
         if is_short(http, v["video_id"]):
             v["status"] = "skipped_short"
             log(f"  Shorts のためスキップ: {v['title']}")
             continue
-        log(f"要約中: [{v['channel_name']}] {v['title']}")
-        tries += 1
-        v["attempts"] += 1
-        try:
-            if dry:
-                summary, meta = dummy_summary(v)
-            else:
-                try:
-                    summary, meta = summarize_with_fallbacks(http, api_key, models, v, fps)
-                except QuotaExceeded as e:
-                    if is_daily_quota(str(e)):
-                        raise
-                    # 分あたりのトークン上限: 1分待ち、fps を下げ先頭90分に絞って再試行
-                    log(f"  429（分あたり上限）。65秒待って軽量モードで再試行: {str(e)[:200]}")
-                    time.sleep(65)
-                    summary, meta = summarize_lite(http, api_key, models, v)
-            consecutive_429 = consecutive_busy = 0
-        except Overloaded as e:
-            v["attempts"] -= 1  # サーバー側の都合なので試行回数に数えない
-            v["last_error"] = f"Gemini混雑のため次回再試行（{str(e)[:80]}）"
-            consecutive_busy += 1
-            log(f"  [busy] 全モデル混雑: {str(e)[:200]}")
-            if consecutive_busy >= 3:
-                log("[stop] 混雑が続くため今回は終了")
-                break
+        info = fetch_watch_info(http, v["video_id"])
+        if info.get("upcoming") or info.get("live_now"):
+            v["last_error"] = "配信前または配信中のため、終了後に要約します"
+            log(f"  配信前/配信中のため保留: {v['title']}")
             continue
-        except QuotaExceeded as e:
-            v["attempts"] -= 1
-            v["last_error"] = f"429: {str(e)[:280]}"
-            consecutive_429 += 1
-            if is_daily_quota(str(e)) or consecutive_429 >= 2:
-                log(f"[stop] クォータ超過のため今回は終了: {str(e)[:300]}")
+        if "duration" in info:
+            v["duration"] = info["duration"]
+        log(f"要約中: [{v['channel_name']}] {v['title']} ({v.get('duration', '?')}秒)")
+        try:
+            summary, meta = dummy_summary(v) if dry else summarizer.summarize(v)
+            consecutive_busy = 0
+        except AllModelsExhausted as e:
+            v["last_error"] = "429 PerDay: 本日の無料枠を使い切りました"
+            log(f"[stop] {e}")
+            break
+        except (Overloaded, QuotaExceeded) as e:
+            # サーバー混雑・分あたり上限は試行回数に数えない
+            v["last_error"] = (f"429: {str(e)[:200]}" if isinstance(e, QuotaExceeded)
+                               else f"Gemini混雑のため次回再試行（{str(e)[:80]}）")
+            consecutive_busy += 1
+            log(f"  [skip] {str(e)[:200]}")
+            if consecutive_busy >= 2:
+                log("[stop] 一時エラーが続くため今回は終了")
                 break
-            log("  [skip] 429 が続くため次の動画へ")
             continue
         except Exception as e:  # noqa: BLE001
+            v["attempts"] += 1
             v["last_error"] = str(e)[:300]
             log(f"  [error] {e}")
             if v["attempts"] >= max_attempts:
@@ -500,7 +528,6 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
         v.update(status="done", summary=summary, summary_meta=meta, summarized_at=iso(now))
         v.pop("last_error", None)
         done_now.append(v)
-        time.sleep(0 if dry else 2)
 
     # 3) 保存（新しい順、上限件数）
     videos = sorted(by_id.values(), key=lambda v: v["published"], reverse=True)[:keep]

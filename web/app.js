@@ -29,6 +29,7 @@ function toSec(ts) {
 }
 function errLabel(v) {
   const e = v.last_error || "";
+  if (/配信/.test(e)) return e;
   if (/混雑|HTTP 50\d/.test(e)) return "Gemini混雑のため次回の更新で再試行します";
   if (e.startsWith("429")) return /PerDay/i.test(e) ? "本日の無料枠を使い切りました（翌日再開）" : "利用上限のため次回再試行します";
   if (/API key|HTTP 40[13]/.test(e)) return "APIキーが無効です（Secretを確認）";
@@ -129,7 +130,7 @@ function renderDetail(v) {
     ${speakers ? `<h3>出演者の主張</h3>${speakers}` : ""}
     ${data ? `<h3>数値・固有名詞</h3><ul>${data}</ul>` : ""}
     ${kw ? `<h3>キーワード</h3><div class="kw">${kw}</div>` : ""}
-    <div class="note">AIによる自動要約（${esc(meta.model || "")}${meta.truncated ? `・先頭${esc(meta.truncated_to || "3時間")}のみ` : ""}）。固有名詞や数値は誤る可能性があるため、重要な判断の前に動画で確認してください。</div>`;
+    <div class="note">AIによる自動要約（${esc(meta.model || "")}${meta.truncated ? `・先頭${esc(meta.truncated_to || meta.analyzed_until || "")}のみ` : meta.analyzed_until ? `・最大${esc(meta.analyzed_until)}まで解析` : ""}）。固有名詞や数値は誤る可能性があるため、重要な判断の前に動画で確認してください。</div>`;
   $("toggle-read").textContent = "未読に戻す";
 }
 

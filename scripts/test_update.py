@@ -31,8 +31,8 @@ GOOD_SUMMARY = {"tldr": ["a", "b", "c"], "conclusion": "c", "chapters": [], "spe
 
 
 class FakeHttp:
-    def __init__(self, feeds, shorts=(), gemini=None):
-        self.feeds, self.shorts = feeds, set(shorts)
+    def __init__(self, feeds, shorts=(), gemini=None, watch=None):
+        self.feeds, self.shorts, self.watch = feeds, set(shorts), watch or {}
         self.gemini = gemini or (lambda url, body: (200, gem_ok(GOOD_SUMMARY)))
         self.posts = []
 
@@ -42,6 +42,9 @@ class FakeHttp:
             return (200, self.feeds[cid]) if cid in self.feeds else (404, "")
         if "/shorts/" in url:
             return (200, "") if url.rsplit("/", 1)[1] in self.shorts else (303, "")
+        if "/watch?v=" in url:
+            vid = url.split("v=")[1]
+            return (200, self.watch[vid]) if vid in self.watch else (404, "")
         if "youtube.com/@" in url:
             handle = url.rsplit("@", 1)[1]
             return 200, f'<link rel="canonical" href="https://www.youtube.com/channel/UC{handle:_<22}">'
@@ -96,7 +99,7 @@ class UpdateTest(unittest.TestCase):
         self.assertIn(":generateContent", url)
         part = body["contents"][0]["parts"][0]
         self.assertEqual(part["file_data"]["file_uri"], "https://www.youtube.com/watch?v=v1")
-        self.assertEqual(part["video_metadata"]["fps"], 0.25)
+        self.assertEqual(part["video_metadata"]["fps"], 0.1)
         self.assertEqual(body["generationConfig"]["mediaResolution"], "MEDIA_RESOLUTION_LOW")
         # 2回目: 既知動画は再要約しない、v2 は時間経過で要約
         later = datetime(2026, 11, 25, 15, 0, tzinfo=timezone.utc)
@@ -105,60 +108,65 @@ class UpdateTest(unittest.TestCase):
         self.assertEqual(len(http.posts), 1)
         self.assertEqual({v["video_id"]: v["status"] for v in out["videos"]}["v2"], "done")
 
-    def test_quota_stops_and_keeps_pending(self):
+    def test_daily_quota_falls_back_to_next_model(self):
+        daily = {"error": {"details": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}}
         http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00"),
                                              ("v2", "t", "2026-11-25T07:00:00+00:00")]),
                          cid("chanb"): feed([])},
-                        gemini=lambda u, b: (429, {"error": "quota"}))
+                        gemini=lambda u, b: (429, daily) if "3.8" in u else (200, gem_ok(GOOD_SUMMARY)))
         out = update.run(http, NOW)
+        self.assertTrue(all(v["status"] == "done" for v in out["videos"]))
+        # 3.8 は1回で打ち切り、以降は 3.6 だけを使う
+        self.assertEqual(model_seq(http), ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.6-flash"])
+
+    def test_all_models_daily_exhausted_stops(self):
+        daily = {"error": {"details": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}}
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00"),
+                                             ("v2", "t", "2026-11-25T07:00:00+00:00")]),
+                         cid("chanb"): feed([])}, gemini=lambda u, b: (429, daily))
+        out = update.run(http, NOW)
+        self.assertEqual(len(http.posts), 3)  # 3モデル×1回で停止、v2 は呼ばない
         v = {x["video_id"]: x for x in out["videos"]}
         self.assertEqual(v["v1"]["status"], "pending")
         self.assertEqual(v["v1"]["attempts"], 0)
-        self.assertTrue(v["v1"]["last_error"].startswith("429"))
-        # 分あたり上限: 各動画で通常→軽量の2回、2本連続で429なら停止
-        self.assertEqual(len(http.posts), 4)
-        self.assertEqual(http.posts[1][1]["contents"][0]["parts"][0]["video_metadata"],
-                         {"fps": 0.1, "end_offset": "5400s"})
+        self.assertIn("PerDay", v["v1"]["last_error"])
 
-    def test_daily_quota_stops_immediately(self):
-        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00"),
-                                             ("v2", "t", "2026-11-25T07:00:00+00:00")]),
-                         cid("chanb"): feed([])},
-                        gemini=lambda u, b: (429, {"error": {"details": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}}))
-        update.run(http, NOW)
-        self.assertEqual(len(http.posts), 1)
+    def test_per_minute_429_retries_same_model_once(self):
+        calls = {"n": 0}
 
-    def test_per_minute_429_recovers_with_lite_mode(self):
         def gem(u, b):
-            meta = b["contents"][0]["parts"][0]["video_metadata"]
-            if meta.get("end_offset") == "5400s":
-                return 200, gem_ok(GOOD_SUMMARY)
-            return 429, {"error": {"details": [{"quotaId": "GenerateContentInputTokensPerModelPerMinute-FreeTier"}]}}
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return 429, {"error": {"details": [{"quotaId": "InputTokensPerModelPerMinute-FreeTier"}]}}
+            return 200, gem_ok(GOOD_SUMMARY)
         http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
                          cid("chanb"): feed([])}, gemini=gem)
         out = update.run(http, NOW)
         self.assertEqual(out["videos"][0]["status"], "done")
-        self.assertEqual(out["videos"][0]["summary_meta"]["truncated_to"], "90分")
+        self.assertEqual(model_seq(http), ["gemini-3.8-flash", "gemini-3.8-flash"])
 
-    def test_model_fallback_and_long_video_retry(self):
-        calls = []
-
-        def gem(url, body):
-            calls.append((url, body["contents"][0]["parts"][0]["video_metadata"]))
-            if "gemini-3.8-flash" in url:
-                return 404, {"error": "not found"}
-            if "end_offset" not in body["contents"][0]["parts"][0]["video_metadata"]:
-                return 400, {"error": {"message": "The input token count exceeds the maximum"}}
-            return 200, gem_ok(GOOD_SUMMARY)
-
-        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
-                         cid("chanb"): feed([])}, gemini=gem)
+    def test_clip_long_and_unknown_duration(self):
+        http = FakeHttp({cid("chana"): feed([("v1", "long", "2026-11-25T08:00:00+00:00"),
+                                             ("v2", "short", "2026-11-25T07:00:00+00:00"),
+                                             ("v3", "unknown", "2026-11-25T06:00:00+00:00")]),
+                         cid("chanb"): feed([])},
+                        watch={"v1": '"lengthSeconds":"9000"', "v2": '"lengthSeconds":"1800"'})
         out = update.run(http, NOW)
-        v = out["videos"][0]
-        self.assertEqual(v["status"], "done")
-        self.assertTrue(v["summary_meta"]["truncated"])
-        self.assertIn("gemini-3.6-flash", calls[-1][0])
-        self.assertEqual(calls[-1][1], {"fps": 0.1, "end_offset": "10800s"})
+        metas = [b["contents"][0]["parts"][0]["video_metadata"] for _, b in http.posts]
+        self.assertEqual(metas, [{"fps": 0.1, "end_offset": "6000s"}, {"fps": 0.1},
+                                 {"fps": 0.1, "end_offset": "6000s"}])
+        v = {x["video_id"]: x for x in out["videos"]}
+        self.assertTrue(v["v1"]["summary_meta"]["truncated"])
+        self.assertNotIn("analyzed_until", v["v2"]["summary_meta"])
+        self.assertFalse(v["v3"]["summary_meta"]["truncated"])
+        self.assertEqual(v["v3"]["summary_meta"]["analyzed_until"], "100分")
+
+    def test_upcoming_live_is_held_without_request(self):
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
+                         cid("chanb"): feed([])}, watch={"v1": '"isUpcoming":true'})
+        out = update.run(http, NOW)
+        self.assertEqual(len(http.posts), 0)
+        self.assertEqual(out["videos"][0]["status"], "pending")
 
     def test_failure_retries_then_marks_failed(self):
         os.environ["MAX_ATTEMPTS"] = "2"
@@ -178,7 +186,6 @@ class UpdateTest(unittest.TestCase):
         out = update.run(http, NOW)
         self.assertEqual([v["status"] for v in out["videos"]], ["done", "pending"])
 
-
     def test_503_falls_back_and_does_not_count_attempt(self):
         def gem(u, b):
             if "gemini-3.8-flash" in u:
@@ -190,9 +197,7 @@ class UpdateTest(unittest.TestCase):
         v = out["videos"][0]
         self.assertEqual(v["status"], "done")
         self.assertEqual(v["summary_meta"]["model"], "gemini-3.6-flash")
-        # 3.8 は 503 → 待って再試行 → 3.6 で成功
-        self.assertEqual([u.split("/models/")[1].split(":")[0] for u, _ in http.posts],
-                         ["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.6-flash"])
+        self.assertEqual(model_seq(http), ["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.6-flash"])
 
     def test_all_busy_keeps_pending_without_attempts(self):
         http = FakeHttp({cid("chana"): feed([("v%d" % i, "t", "2026-11-25T0%d:00:00+00:00" % i) for i in range(1, 6)]),
@@ -201,7 +206,11 @@ class UpdateTest(unittest.TestCase):
         out = update.run(http, NOW)
         self.assertTrue(all(v["status"] == "pending" and v["attempts"] == 0 for v in out["videos"]))
         self.assertIn("混雑", out["videos"][0]["last_error"])
-        self.assertEqual(len(http.posts), 3 * 6)  # 3本 × (3モデル × 2回) で停止
+        self.assertEqual(len(http.posts), 12)  # 2本連続で全モデル混雑なら停止
+
+
+def model_seq(http):
+    return [u.split("/models/")[1].split(":")[0] for u, _ in http.posts]
 
 
 if __name__ == "__main__":
