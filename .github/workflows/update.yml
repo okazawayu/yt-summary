@@ -2,8 +2,9 @@ name: update-summaries
 
 on:
   schedule:
-    # 3時間おき（UTC 表記。JST では 0,3,6,...時の17分）。GitHub 側の遅延が数分〜数十分出ることがある
-    - cron: "17 */3 * * *"
+    # GitHub の schedule は高負荷時に実行が間引かれることがあるため、毎時起動して取りこぼしを補う。
+    # 新着がなければ Gemini は呼ばれないので無料枠は消費しない
+    - cron: "23 * * * *"
   workflow_dispatch: {}
   push:
     branches: [main]

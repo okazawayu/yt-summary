@@ -1,9 +1,9 @@
 # 番組要約（YouTube 新着要約 PWA）
 
-TBS CROSS DIG with Bloomberg / PIVOT / ReHacQ の新着動画を 3 時間おきに検知し、Gemini で詳細要約して、iPhone のホーム画面から読めるようにする。
+TBS CROSS DIG with Bloomberg / PIVOT / ReHacQ の新着動画を毎時チェックし、Gemini で詳細要約して、iPhone のホーム画面から読めるようにする。
 
 ```
-GitHub Actions（3時間おき）
+GitHub Actions（毎時）
   ├ RSS で新着検知 → Shorts・公開30分以内を除外
   ├ Gemini API に YouTube URL を直接渡して要約（字幕取得は不要）
   ├ data/videos.json をコミット
