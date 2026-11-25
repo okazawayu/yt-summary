@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>番組要約</title>
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f6f3" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="番組要約">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <h1>番組要約</h1>
+    <button id="refresh" class="icon-btn" aria-label="更新">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    </button>
+  </div>
+  <div id="updated" class="updated"></div>
+  <nav id="chips" class="chips" aria-label="チャンネル"></nav>
+  <div class="tools">
+    <input id="q" type="search" placeholder="キーワード・出演者で検索" autocomplete="off">
+    <label class="toggle"><input id="unread" type="checkbox"> 未読のみ</label>
+  </div>
+</header>
+
+<main id="list" class="list" aria-live="polite"></main>
+
+<section id="detail" class="detail" hidden aria-modal="true" role="dialog">
+  <div class="detail-bar">
+    <button id="back" class="icon-btn" aria-label="戻る">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z"/></svg>
+    </button>
+    <span id="detail-ch" class="detail-ch"></span>
+    <button id="toggle-read" class="text-btn">未読に戻す</button>
+  </div>
+  <article id="detail-body" class="detail-body"></article>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>

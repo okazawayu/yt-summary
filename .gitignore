@@ -1,0 +1,4 @@
+web/data/
+__pycache__/
+*.tmp
+_site/

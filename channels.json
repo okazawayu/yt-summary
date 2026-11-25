@@ -1,0 +1,20 @@
+[
+  {
+    "key": "tbs_bloomberg",
+    "name": "TBS CROSS DIG",
+    "handle": "@tbs_bloomberg",
+    "channel_id_hint": "UCeCmAYh1ylwIsgGrmqaklzg"
+  },
+  {
+    "key": "pivot",
+    "name": "PIVOT",
+    "handle": "@pivot00",
+    "channel_id_hint": "UC8yHePe_RgUBE-waRWy6olw"
+  },
+  {
+    "key": "rehacq",
+    "name": "ReHacQ",
+    "handle": "@rehacq",
+    "channel_id_hint": "UCG_oqDSlIYEspNpd2H4zWhw"
+  }
+]
