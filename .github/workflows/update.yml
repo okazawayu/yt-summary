@@ -60,6 +60,8 @@ jobs:
 
       - name: Build site
         run: |
+          # 待機中に別の実行が要約データをコミットしている場合があるので、最新の data/ を取り直す
+          git fetch --depth=1 origin main && git checkout origin/main -- data/ || true
           mkdir -p _site/data
           cp -r web/* _site/
           cp data/videos.json _site/data/ 2>/dev/null || echo '{"videos":[],"channels":[]}' > _site/data/videos.json
