@@ -88,6 +88,7 @@ function renderList() {
       <div>
         <div class="meta"><span class="ch-dot"></span><span class="ch-name">${esc(v.channel_name)}</span><span>${fmtDate(v.published)}</span>${done ? "" : `<span class="badge">要約待ち</span>`}</div>
         <h2>${esc(v.title)}</h2>
+        ${!done && v.last_error ? `<div class="err">前回エラー（${v.attempts || 0}回目）: ${esc(v.last_error.slice(0, 120))}</div>` : ""}
       </div>
       ${tldr ? `<ul class="tldr">${tldr}</ul>` : ""}
     </button>`;
@@ -121,7 +122,7 @@ function renderDetail(v) {
     ${speakers ? `<h3>出演者の主張</h3>${speakers}` : ""}
     ${data ? `<h3>数値・固有名詞</h3><ul>${data}</ul>` : ""}
     ${kw ? `<h3>キーワード</h3><div class="kw">${kw}</div>` : ""}
-    <div class="note">AIによる自動要約（${esc(meta.model || "")}${meta.truncated ? "・先頭3時間のみ" : ""}）。固有名詞や数値は誤る可能性があるため、重要な判断の前に動画で確認してください。</div>`;
+    <div class="note">AIによる自動要約（${esc(meta.model || "")}${meta.truncated ? `・先頭${esc(meta.truncated_to || "3時間")}のみ` : ""}）。固有名詞や数値は誤る可能性があるため、重要な判断の前に動画で確認してください。</div>`;
   $("toggle-read").textContent = "未読に戻す";
 }
 

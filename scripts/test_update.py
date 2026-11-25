@@ -114,7 +114,31 @@ class UpdateTest(unittest.TestCase):
         v = {x["video_id"]: x for x in out["videos"]}
         self.assertEqual(v["v1"]["status"], "pending")
         self.assertEqual(v["v1"]["attempts"], 0)
+        self.assertTrue(v["v1"]["last_error"].startswith("429"))
+        # 分あたり上限: 各動画で通常→軽量の2回、2本連続で429なら停止
+        self.assertEqual(len(http.posts), 4)
+        self.assertEqual(http.posts[1][1]["contents"][0]["parts"][0]["video_metadata"],
+                         {"fps": 0.1, "end_offset": "5400s"})
+
+    def test_daily_quota_stops_immediately(self):
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00"),
+                                             ("v2", "t", "2026-11-25T07:00:00+00:00")]),
+                         cid("chanb"): feed([])},
+                        gemini=lambda u, b: (429, {"error": {"details": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}}))
+        update.run(http, NOW)
         self.assertEqual(len(http.posts), 1)
+
+    def test_per_minute_429_recovers_with_lite_mode(self):
+        def gem(u, b):
+            meta = b["contents"][0]["parts"][0]["video_metadata"]
+            if meta.get("end_offset") == "5400s":
+                return 200, gem_ok(GOOD_SUMMARY)
+            return 429, {"error": {"details": [{"quotaId": "GenerateContentInputTokensPerModelPerMinute-FreeTier"}]}}
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
+                         cid("chanb"): feed([])}, gemini=gem)
+        out = update.run(http, NOW)
+        self.assertEqual(out["videos"][0]["status"], "done")
+        self.assertEqual(out["videos"][0]["summary_meta"]["truncated_to"], "90分")
 
     def test_model_fallback_and_long_video_retry(self):
         calls = []

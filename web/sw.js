@@ -1,5 +1,5 @@
 // アプリ本体はキャッシュ優先、要約データはネットワーク優先（オフライン時は前回分を表示）
-const CACHE = "yt-summary-v1";
+const CACHE = "yt-summary-v2";
 const SHELL = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

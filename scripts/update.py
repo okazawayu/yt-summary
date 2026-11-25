@@ -292,6 +292,25 @@ def summarize_with_fallbacks(http: Http, api_key: str, models: list[str], video:
     raise RuntimeError(f"利用可能なモデルがありません: {last_err}")
 
 
+def is_daily_quota(msg: str) -> bool:
+    m = msg.lower()
+    return "perday" in m or "per day" in m or "daily" in m
+
+
+def summarize_lite(http: Http, api_key: str, models: list[str], video: dict) -> tuple[dict, dict]:
+    """分あたりトークン上限に収めるため fps 0.1・先頭90分（約30万トークン以下）で要約する。"""
+    last: Exception | None = None
+    for model in models:
+        try:
+            summary, meta = gemini_summarize(http, api_key, model, video, 0.1, end_offset="5400s")
+            meta["truncated"] = True
+            meta["truncated_to"] = "90分"
+            return summary, meta
+        except ModelNotFound as e:
+            last = e
+    raise RuntimeError(f"利用可能なモデルがありません: {last}")
+
+
 def dummy_summary(video: dict) -> tuple[dict, dict]:
     return ({
         "tldr": [f"（DRY_RUN）{video['title'][:40]}", "要点2", "要点3"],
@@ -399,21 +418,41 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
          and now - parse_iso(v["published"]) >= min_age),
         key=lambda v: v["published"], reverse=True)
     done_now: list[dict] = []
+    tries = 0
+    consecutive_429 = 0
     for v in pending:
-        if len(done_now) >= max_per_run:
+        if len(done_now) >= max_per_run or tries >= max_per_run * 2:
             break
         if is_short(http, v["video_id"]):
             v["status"] = "skipped_short"
             log(f"  Shorts のためスキップ: {v['title']}")
             continue
         log(f"要約中: [{v['channel_name']}] {v['title']}")
+        tries += 1
         v["attempts"] += 1
         try:
-            summary, meta = dummy_summary(v) if dry else summarize_with_fallbacks(http, api_key, models, v, fps)
+            if dry:
+                summary, meta = dummy_summary(v)
+            else:
+                try:
+                    summary, meta = summarize_with_fallbacks(http, api_key, models, v, fps)
+                except QuotaExceeded as e:
+                    if is_daily_quota(str(e)):
+                        raise
+                    # 分あたりのトークン上限: 1分待ち、fps を下げ先頭90分に絞って再試行
+                    log(f"  429（分あたり上限）。65秒待って軽量モードで再試行: {str(e)[:200]}")
+                    time.sleep(65)
+                    summary, meta = summarize_lite(http, api_key, models, v)
+            consecutive_429 = 0
         except QuotaExceeded as e:
             v["attempts"] -= 1
-            log(f"[stop] クォータ超過のため今回は終了: {e}")
-            break
+            v["last_error"] = f"429: {str(e)[:280]}"
+            consecutive_429 += 1
+            if is_daily_quota(str(e)) or consecutive_429 >= 2:
+                log(f"[stop] クォータ超過のため今回は終了: {str(e)[:300]}")
+                break
+            log("  [skip] 429 が続くため次の動画へ")
+            continue
         except Exception as e:  # noqa: BLE001
             v["last_error"] = str(e)[:300]
             log(f"  [error] {e}")
