@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-25T11:16:16Z",
+ "updated_at": "2026-11-25T11:39:10Z",
  "channels": [
   {
    "key": "tbs_bloomberg",
@@ -27,8 +27,9 @@
    "channel_key": "pivot",
    "channel_name": "PIVOT",
    "status": "pending",
-   "attempts": 0,
-   "added_at": "2026-11-25T11:16:16Z"
+   "attempts": 1,
+   "added_at": "2026-11-25T11:16:16Z",
+   "last_error": "HTTP 503: {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
   },
   {
    "video_id": "lvugx1Bru4g",
@@ -39,7 +40,7 @@
    "channel_key": "tbs_bloomberg",
    "channel_name": "TBS CROSS DIG",
    "status": "pending",
-   "attempts": 1,
+   "attempts": 2,
    "added_at": "2026-11-25T11:16:16Z",
    "last_error": "HTTP 503: {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
   },
@@ -52,7 +53,7 @@
    "channel_key": "pivot",
    "channel_name": "PIVOT",
    "status": "pending",
-   "attempts": 1,
+   "attempts": 2,
    "added_at": "2026-11-25T11:16:16Z",
    "last_error": "HTTP 503: {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
   },
@@ -65,7 +66,7 @@
    "channel_key": "rehacq",
    "channel_name": "ReHacQ",
    "status": "pending",
-   "attempts": 1,
+   "attempts": 2,
    "added_at": "2026-11-25T11:16:16Z",
    "last_error": "HTTP 503: {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
   },
@@ -92,7 +93,7 @@
    "status": "pending",
    "attempts": 1,
    "added_at": "2026-11-25T11:16:16Z",
-   "last_error": "HTTP 503: {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+   "last_error": "429: {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota"
   },
   {
    "video_id": "TqkXFlo4U98",
@@ -103,7 +104,7 @@
    "channel_key": "pivot",
    "channel_name": "PIVOT",
    "status": "pending",
-   "attempts": 1,
+   "attempts": 2,
    "added_at": "2026-11-25T11:16:16Z",
    "last_error": "HTTP 503: {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
   },
@@ -118,7 +119,7 @@
    "status": "pending",
    "attempts": 1,
    "added_at": "2026-11-25T11:16:16Z",
-   "last_error": "HTTP 403: {'error': {'code': 403, 'message': 'The caller does not have permission', 'status': 'PERMISSION_DENIED'}}"
+   "last_error": "429: {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota"
   },
   {
    "video_id": "mimVa3CNe4o",
