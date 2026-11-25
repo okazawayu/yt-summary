@@ -179,5 +179,30 @@ class UpdateTest(unittest.TestCase):
         self.assertEqual([v["status"] for v in out["videos"]], ["done", "pending"])
 
 
+    def test_503_falls_back_and_does_not_count_attempt(self):
+        def gem(u, b):
+            if "gemini-3.8-flash" in u:
+                return 503, {"error": {"code": 503, "message": "high demand"}}
+            return 200, gem_ok(GOOD_SUMMARY)
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
+                         cid("chanb"): feed([])}, gemini=gem)
+        out = update.run(http, NOW)
+        v = out["videos"][0]
+        self.assertEqual(v["status"], "done")
+        self.assertEqual(v["summary_meta"]["model"], "gemini-3.6-flash")
+        # 3.8 は 503 → 待って再試行 → 3.6 で成功
+        self.assertEqual([u.split("/models/")[1].split(":")[0] for u, _ in http.posts],
+                         ["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.6-flash"])
+
+    def test_all_busy_keeps_pending_without_attempts(self):
+        http = FakeHttp({cid("chana"): feed([("v%d" % i, "t", "2026-11-25T0%d:00:00+00:00" % i) for i in range(1, 6)]),
+                         cid("chanb"): feed([])},
+                        gemini=lambda u, b: (503, {"error": "busy"}))
+        out = update.run(http, NOW)
+        self.assertTrue(all(v["status"] == "pending" and v["attempts"] == 0 for v in out["videos"]))
+        self.assertIn("混雑", out["videos"][0]["last_error"])
+        self.assertEqual(len(http.posts), 3 * 6)  # 3本 × (3モデル × 2回) で停止
+
+
 if __name__ == "__main__":
     unittest.main()

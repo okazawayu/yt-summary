@@ -228,6 +228,10 @@ class ModelNotFound(Exception):
     pass
 
 
+class Overloaded(Exception):
+    """503 等のサーバー側の一時エラー。試行回数に数えず次回に回す。"""
+
+
 def gemini_summarize(http: Http, api_key: str, model: str, video: dict,
                      fps: float, end_offset: str | None = None) -> tuple[dict, dict]:
     part = {"file_data": {"file_uri": f"https://www.youtube.com/watch?v={video['video_id']}"}}
@@ -248,7 +252,12 @@ def gemini_summarize(http: Http, api_key: str, model: str, video: dict,
         },
     }
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    status, res = http.post_json(url, body, {"x-goog-api-key": api_key})
+    try:
+        status, res = http.post_json(url, body, {"x-goog-api-key": api_key})
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        raise Overloaded(f"通信エラー: {e}") from e
+    if status in (500, 502, 503, 504):
+        raise Overloaded(f"HTTP {status}: {str(res)[:200]}")
     if status == 429:
         raise QuotaExceeded(str(res)[:300])
     if status == 404:
@@ -273,10 +282,11 @@ def is_too_long_error(msg: str) -> bool:
 def summarize_with_fallbacks(http: Http, api_key: str, models: list[str], video: dict,
                              fps: float) -> tuple[dict, dict]:
     last_err: Exception | None = None
+    overloaded: Overloaded | None = None
     for model in models:
         try:
             try:
-                return gemini_summarize(http, api_key, model, video, fps)
+                return _with_overload_retry(lambda: gemini_summarize(http, api_key, model, video, fps))
             except RuntimeError as e:
                 if not is_too_long_error(str(e)):
                     raise
@@ -289,7 +299,23 @@ def summarize_with_fallbacks(http: Http, api_key: str, models: list[str], video:
             log(f"  [warn] モデル {e} が見つかりません。次の候補へ")
             last_err = e
             continue
+        except Overloaded as e:
+            log(f"  [warn] {model} が混雑中。次の候補へ: {str(e)[:120]}")
+            overloaded = e
+            continue
+    if overloaded:
+        raise overloaded
     raise RuntimeError(f"利用可能なモデルがありません: {last_err}")
+
+
+def _with_overload_retry(fn, wait: int = 20):
+    """混雑エラーは同じモデルで1回だけ待って再試行する。"""
+    try:
+        return fn()
+    except Overloaded as e:
+        log(f"  混雑のため{wait}秒待って再試行: {str(e)[:120]}")
+        time.sleep(wait)
+        return fn()
 
 
 def is_daily_quota(msg: str) -> bool:
@@ -306,8 +332,10 @@ def summarize_lite(http: Http, api_key: str, models: list[str], video: dict) -> 
             meta["truncated"] = True
             meta["truncated_to"] = "90分"
             return summary, meta
-        except ModelNotFound as e:
+        except (ModelNotFound, Overloaded) as e:
             last = e
+    if isinstance(last, Overloaded):
+        raise last
     raise RuntimeError(f"利用可能なモデルがありません: {last}")
 
 
@@ -420,6 +448,7 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
     done_now: list[dict] = []
     tries = 0
     consecutive_429 = 0
+    consecutive_busy = 0
     for v in pending:
         if len(done_now) >= max_per_run or tries >= max_per_run * 2:
             break
@@ -443,7 +472,16 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
                     log(f"  429（分あたり上限）。65秒待って軽量モードで再試行: {str(e)[:200]}")
                     time.sleep(65)
                     summary, meta = summarize_lite(http, api_key, models, v)
-            consecutive_429 = 0
+            consecutive_429 = consecutive_busy = 0
+        except Overloaded as e:
+            v["attempts"] -= 1  # サーバー側の都合なので試行回数に数えない
+            v["last_error"] = f"Gemini混雑のため次回再試行（{str(e)[:80]}）"
+            consecutive_busy += 1
+            log(f"  [busy] 全モデル混雑: {str(e)[:200]}")
+            if consecutive_busy >= 3:
+                log("[stop] 混雑が続くため今回は終了")
+                break
+            continue
         except QuotaExceeded as e:
             v["attempts"] -= 1
             v["last_error"] = f"429: {str(e)[:280]}"

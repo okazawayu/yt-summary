@@ -27,6 +27,13 @@ function toSec(ts) {
   if (p.some(isNaN)) return 0;
   return p.reduce((a, n) => a * 60 + n, 0);
 }
+function errLabel(v) {
+  const e = v.last_error || "";
+  if (/混雑|HTTP 50\d/.test(e)) return "Gemini混雑のため次回の更新で再試行します";
+  if (e.startsWith("429")) return /PerDay/i.test(e) ? "本日の無料枠を使い切りました（翌日再開）" : "利用上限のため次回再試行します";
+  if (/API key|HTTP 40[13]/.test(e)) return "APIキーが無効です（Secretを確認）";
+  return `前回エラー（${v.attempts || 0}回目）: ${e.slice(0, 100)}`;
+}
 const thumb = (id) => `https://i.ytimg.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`;
 const ytUrl = (id, t) => `https://www.youtube.com/watch?v=${encodeURIComponent(id)}${t ? `&t=${t}s` : ""}`;
 const chStyle = (key) => `--c: var(--c-${esc(key)})`;
@@ -88,7 +95,7 @@ function renderList() {
       <div>
         <div class="meta"><span class="ch-dot"></span><span class="ch-name">${esc(v.channel_name)}</span><span>${fmtDate(v.published)}</span>${done ? "" : `<span class="badge">要約待ち</span>`}</div>
         <h2>${esc(v.title)}</h2>
-        ${!done && v.last_error ? `<div class="err">前回エラー（${v.attempts || 0}回目）: ${esc(v.last_error.slice(0, 120))}</div>` : ""}
+        ${!done && v.last_error ? `<div class="err">${esc(errLabel(v))}</div>` : ""}
       </div>
       ${tldr ? `<ul class="tldr">${tldr}</ul>` : ""}
     </button>`;
