@@ -19,15 +19,22 @@
 <header class="top">
   <div class="top-row">
     <h1>番組要約</h1>
-    <button id="refresh" class="icon-btn" aria-label="更新">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-    </button>
+    <div class="top-actions">
+      <button id="refresh" class="icon-btn" aria-label="更新">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      </button>
+      <button id="open-settings" class="icon-btn" aria-label="同期の設定">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>
+      </button>
+    </div>
   </div>
-  <div id="updated" class="updated"></div>
+  <div class="updated"><span id="updated"></span><span id="sync-status" class="sync-status"></span></div>
   <nav id="chips" class="chips" aria-label="チャンネル"></nav>
+  <nav id="tags" class="chips tags" aria-label="頻出タグ"></nav>
   <div class="tools">
     <input id="q" type="search" placeholder="キーワード・出演者で検索" autocomplete="off">
-    <label class="toggle"><input id="unread" type="checkbox"> 未読のみ</label>
+    <label class="toggle"><input id="unread" type="checkbox"> 未読</label>
+    <label class="toggle"><input id="favonly" type="checkbox"> ★</label>
   </div>
 </header>
 
@@ -39,9 +46,39 @@
       <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z"/></svg>
     </button>
     <span id="detail-ch" class="detail-ch"></span>
+    <button id="detail-fav" class="star" aria-label="お気に入り" aria-pressed="false">★</button>
     <button id="toggle-read" class="text-btn">未読に戻す</button>
   </div>
   <article id="detail-body" class="detail-body"></article>
+</section>
+
+<section id="settings" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="settings-h">
+  <div class="sheet-inner">
+    <h2 id="settings-h">端末間の同期</h2>
+    <p class="help">既読とお気に入りを、GitHub リポジトリの <code>state</code> ブランチに保存して、ブラウザとスマホで共有します。同期する端末それぞれで、同じトークンを一度だけ入力してください。</p>
+    <label class="field">GitHub トークン
+      <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+    </label>
+    <label class="field">リポジトリ
+      <input id="repo" type="text" autocomplete="off" spellcheck="false">
+    </label>
+    <details class="help">
+      <summary>トークンの作り方</summary>
+      <ol>
+        <li>GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token</li>
+        <li>Repository access：Only select repositories → このリポジトリ</li>
+        <li>Permissions：<b>Contents</b> を Read and write（他は不要）</li>
+      </ol>
+      <p>トークンはこの端末のブラウザにだけ保存され、サイトには公開されません。</p>
+    </details>
+    <div class="sheet-actions">
+      <button id="sync-clear" class="text-btn">この端末から削除</button>
+      <span class="spacer"></span>
+      <button id="settings-close" class="text-btn">閉じる</button>
+      <button id="sync-save" class="primary-btn">保存して同期</button>
+    </div>
+    <div id="sync-msg" class="sync-msg" aria-live="polite"></div>
+  </div>
 </section>
 
 <script src="app.js"></script>

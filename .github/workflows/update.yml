@@ -1,10 +1,7 @@
 name: update-summaries
 
 on:
-  schedule:
-    # GitHub の schedule は高負荷時に実行が間引かれることがあるため、毎時起動して取りこぼしを補う。
-    # 新着がなければ Gemini は呼ばれないので無料枠は消費しない
-    - cron: "23 * * * *"
+  # 定期起動は外部（cron-job.org）から workflow_dispatch で毎時行う。GitHub の schedule は間引かれて不安定なため使わない
   workflow_dispatch: {}
   push:
     branches: [main]

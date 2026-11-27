@@ -55,6 +55,21 @@ GitHub Actions（毎時）
 | チェック頻度を変える | `.github/workflows/update.yml` の `cron` |
 | 1 回あたりの要約本数（既定 8） | Variables `MAX_PER_RUN` |
 
+## 既読・お気に入りの端末間同期
+
+既読とお気に入りは、各端末のブラウザに保存したうえで、リポジトリの `state` ブランチの `state.json` に書き込んで共有する。
+
+1. GitHub で Fine-grained token を作る（Only select repositories → このリポジトリ、Permissions は **Contents: Read and write** のみ）。
+2. アプリ右上の歯車 → トークンを入力 →「保存して同期」。
+3. 同期したい端末すべてで、同じトークンを入力する。
+
+- 項目ごとに更新時刻を持たせ、新しい方を採用してマージする。そのため、未読に戻す・お気に入り解除も正しく伝わる。
+- 公開リポジトリの場合、`state.json`（既読・お気に入りの動画ID）は誰でも閲覧できる。
+
+## 定期実行
+
+GitHub の schedule は間引かれて不安定なため使わない。cron-job.org から毎時 `workflow_dispatch` を呼んで起動する。
+
 ## プッシュ通知（任意）
 
 1. iPhone に [ntfy](https://apps.apple.com/app/ntfy/id1625396347) アプリを入れる。
