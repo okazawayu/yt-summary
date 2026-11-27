@@ -22,7 +22,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
 
@@ -50,14 +50,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
-          if git diff --cached --quiet; then
-            echo "no changes"
-          else
-            git commit -m "data: update summaries $(date -u +%Y-%m-%dT%H:%MZ)"
-            git pull --rebase
-            git push
-          fi
+          # 別の実行が先にコミットしていても要約を失わないよう、動画単位でマージしてから push する
+          for i in 1 2 3; do
+            git fetch -q origin main
+            git show origin/main:data/videos.json > /tmp/theirs.json 2>/dev/null || echo '{"videos":[]}' > /tmp/theirs.json
+            python scripts/merge_data.py data/videos.json /tmp/theirs.json data/videos.json
+            git reset -q --mixed origin/main
+            git add data/
+            if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+            git commit -q -m "data: update summaries $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push -q origin HEAD:main; then exit 0; fi
+            echo "push rejected, retrying ($i)"; sleep 5
+          done
+          exit 1
 
       - name: Build site
         run: |

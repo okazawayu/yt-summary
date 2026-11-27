@@ -364,14 +364,44 @@ def fetch_watch_info(http: Http, video_id: str) -> dict:
     if status != 200:
         return {}
     info: dict = {}
-    m = re.search(r'"lengthSeconds":"(\d+)"', html)
+    # ページ内には関連動画の情報も含まれるため、この動画自身の videoDetails / liveBroadcastDetails だけを見る
+    vd = _block(html, '"videoDetails":{')
+    m = re.search(r'"lengthSeconds":"(\d+)"', vd)
     if m:
         info["duration"] = int(m.group(1))
-    if '"isUpcoming":true' in html:
+    if '"isUpcoming":true' in vd:
         info["upcoming"] = True
-    if '"isLiveNow":true' in html:
+    if '"isLiveNow":true' in _block(html, '"liveBroadcastDetails":{'):
         info["live_now"] = True
     return info
+
+
+def _block(html: str, key: str) -> str:
+    """key で始まる JSON オブジェクトを波括弧の対応で切り出す（見つからなければ空文字）。"""
+    i = html.find(key)
+    if i < 0:
+        return ""
+    j = i + len(key) - 1
+    depth = 0
+    in_str = esc = False
+    for k in range(j, min(len(html), j + 200_000)):
+        c = html[k]
+        if in_str:
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                in_str = False
+        elif c == '"':
+            in_str = True
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return html[j:k + 1]
+    return html[j:j + 200_000]
 
 
 def dummy_summary(video: dict) -> tuple[dict, dict]:
@@ -440,6 +470,9 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
     min_age = timedelta(minutes=env_int("MIN_AGE_MINUTES", 30))
     max_attempts = env_int("MAX_ATTEMPTS", 6)
     keep = env_int("KEEP_ITEMS", 400)
+    # ジョブの上限 60 分に掛からないよう、この時間を過ぎたら新しい要約を始めない
+    budget = timedelta(minutes=env_int("RUN_BUDGET_MINUTES", 35))
+    started = time.monotonic()
 
     channels = load_json(CHANNELS_FILE, [])
     db = load_json(DATA_FILE, {"videos": []})
@@ -488,6 +521,9 @@ def run(http: Http | None = None, now: datetime | None = None) -> dict:
     consecutive_busy = 0
     for v in pending:
         if len(done_now) >= max_per_run or summarizer.calls >= max_per_run * 2:
+            break
+        if time.monotonic() - started > budget.total_seconds():
+            log("[stop] 実行時間の上限に近いため今回は終了")
             break
         if is_short(http, v["video_id"]):
             v["status"] = "skipped_short"

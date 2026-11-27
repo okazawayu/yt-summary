@@ -150,7 +150,7 @@ class UpdateTest(unittest.TestCase):
                                              ("v2", "short", "2026-11-25T07:00:00+00:00"),
                                              ("v3", "unknown", "2026-11-25T06:00:00+00:00")]),
                          cid("chanb"): feed([])},
-                        watch={"v1": '"lengthSeconds":"9000"', "v2": '"lengthSeconds":"1800"'})
+                        watch={"v1": '{"videoDetails":{"lengthSeconds":"9000"}}', "v2": '{"videoDetails":{"lengthSeconds":"1800"}}'})
         out = update.run(http, NOW)
         metas = [b["contents"][0]["parts"][0]["video_metadata"] for _, b in http.posts]
         self.assertEqual(metas, [{"fps": 0.1, "end_offset": "6000s"}, {"fps": 0.1},
@@ -163,7 +163,7 @@ class UpdateTest(unittest.TestCase):
 
     def test_upcoming_live_is_held_without_request(self):
         http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
-                         cid("chanb"): feed([])}, watch={"v1": '"isUpcoming":true'})
+                         cid("chanb"): feed([])}, watch={"v1": '{"videoDetails":{"isUpcoming":true}}'})
         out = update.run(http, NOW)
         self.assertEqual(len(http.posts), 0)
         self.assertEqual(out["videos"][0]["status"], "pending")
@@ -207,6 +207,53 @@ class UpdateTest(unittest.TestCase):
         self.assertTrue(all(v["status"] == "pending" and v["attempts"] == 0 for v in out["videos"]))
         self.assertIn("混雑", out["videos"][0]["last_error"])
         self.assertEqual(len(http.posts), 12)  # 2本連続で全モデル混雑なら停止
+
+    def test_upcoming_in_related_videos_is_ignored(self):
+        html = ('{"videoDetails":{"videoId":"v1","lengthSeconds":"3600","isLiveContent":false},'
+                '"related":[{"videoId":"x","isUpcoming":true,"lengthSeconds":"10"}]}')
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
+                         cid("chanb"): feed([])}, watch={"v1": html})
+        out = update.run(http, NOW)
+        self.assertEqual(out["videos"][0]["status"], "done")
+        self.assertEqual(out["videos"][0]["duration"], 3600)
+
+    def test_upcoming_in_own_details_is_held(self):
+        html = '{"videoDetails":{"videoId":"v1","lengthSeconds":"0","isUpcoming":true,"title":"a{b}"}}'
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
+                         cid("chanb"): feed([])}, watch={"v1": html})
+        out = update.run(http, NOW)
+        self.assertEqual(len(http.posts), 0)
+
+    def test_time_budget_stops_new_work(self):
+        os.environ["RUN_BUDGET_MINUTES"] = "0"
+        http = FakeHttp({cid("chana"): feed([("v1", "t", "2026-11-25T08:00:00+00:00")]),
+                         cid("chanb"): feed([])})
+        real = update.time.monotonic
+        t = iter([0.0, 100.0, 100.0, 100.0])
+        update.time.monotonic = lambda: next(t, 100.0)
+        try:
+            out = update.run(http, NOW)
+        finally:
+            update.time.monotonic = real
+            os.environ.pop("RUN_BUDGET_MINUTES")
+        self.assertEqual(out["videos"][0]["status"], "pending")
+        self.assertEqual(len(http.posts), 0)
+
+
+class MergeTest(unittest.TestCase):
+    def test_merge_prefers_progress(self):
+        import merge_data
+        ours = {"updated_at": "2026-11-27T02:46:00Z", "videos": [
+            {"video_id": "a", "published": "2026-11-27T01:00:00Z", "status": "done", "summarized_at": "2026-11-27T02:46:00Z"},
+            {"video_id": "b", "published": "2026-11-27T00:00:00Z", "status": "pending", "attempts": 0}]}
+        theirs = {"updated_at": "2026-11-26T20:05:00Z", "videos": [
+            {"video_id": "a", "published": "2026-11-27T01:00:00Z", "status": "pending", "attempts": 0},
+            {"video_id": "b", "published": "2026-11-27T00:00:00Z", "status": "done", "summarized_at": "2026-11-26T20:05:00Z"},
+            {"video_id": "c", "published": "2026-11-26T00:00:00Z", "status": "done", "summarized_at": "2026-11-26T20:05:00Z"}]}
+        m = merge_data.merge(ours, theirs)
+        self.assertEqual({v["video_id"]: v["status"] for v in m["videos"]}, {"a": "done", "b": "done", "c": "done"})
+        self.assertEqual([v["video_id"] for v in m["videos"]], ["a", "b", "c"])
+        self.assertEqual(m["updated_at"], "2026-11-27T02:46:00Z")
 
 
 def model_seq(http):
