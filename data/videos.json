@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-28T00:00:42Z",
+ "updated_at": "2026-11-28T01:00:42Z",
  "channels": [
   {
    "key": "tbs_bloomberg",
@@ -18,6 +18,19 @@
   }
  ],
  "videos": [
+  {
+   "video_id": "016WGhdf330",
+   "title": "【メガバンクが挑む産業づくり】みずほ銀行が産業創造を手がける理由 /３年後の利益は追わない / 日本ならではの成長産業の発掘 / Blue Lab",
+   "published": "2026-11-28T00:00:13+00:00",
+   "url": "https://www.youtube.com/watch?v=016WGhdf330",
+   "description": "【Sponsored by みずほ銀行】\n注目のゲストをお招きし事業やビジョンを聞く「&TALK」。\n今回は、「なぜ今銀行が産業をつくるのか？」をテーマに、みずほ銀行 事業共創部 次長の古川真希さんに話を聞きました。\n\n▼ Blue Lab 詳細はこちら\nhttps://bit.ly/4A8qxjs\n\n▼ 目次\n00:00 ダイジェスト\n01:01 本編スタート\n04:27 「産業をつくる」とは何か？\n06:48 なぜみずほが産業づくりをするのか？\n09:10 なぜ融資ではなく投資なのか？\n15:51 資金の出し手から産業の作り手へ\n17:46 事業共創部が目指す投資の形\n19:13 みずほ銀行に入って感じたこと\n20:52 1社の限界をどう超えるか\n25:10 事業共創部の顧客への関わり方\n26:47 日本ならではの成長産業の発掘\n29:16 産業づくりに挑戦する理由\n31:05 中馬和彦氏が語る産業構造\n\n▼出演者情報\n古川真希｜みずほ銀行 事業共創部 次長\n公認会計士。監査法人、官民ファンドでの投資、事業会社の新規事業を経て、2026年9月より現職。会計･投資･事業開発の経験を生かし、新たな産業づくりを担う。\n\n#産業づくり #事業共創 #スタートアップ #オープンイノベーション #新規事業 #BlueLab #みずほ銀行",
+   "channel_key": "pivot",
+   "channel_name": "PIVOT",
+   "status": "pending",
+   "attempts": 0,
+   "added_at": "2026-11-28T01:00:42Z",
+   "last_error": "429: {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limi"
+  },
   {
    "video_id": "xCrxA8MUL-8",
    "title": "【AI時代の言論危機】言論空間A、B、Cとは？／国家と生成AIによる支配／全てが週刊文春化／意見を支配する力／政治家のメディア化／言論空間Xの可能性／司会者の哲学／台本なしで話す／YouTubeが最強",
