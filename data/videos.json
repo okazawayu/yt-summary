@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-28T09:00:46Z",
+ "updated_at": "2026-11-28T10:00:42Z",
  "channels": [
   {
    "key": "tbs_bloomberg",
@@ -837,6 +837,19 @@
     "truncated": false
    },
    "summarized_at": "2026-11-28T02:00:41Z"
+  },
+  {
+   "video_id": "GR_PLvs8SyE",
+   "title": "【徳島県知事が緊急出演】県スポーツ協会「潰す」発言の真意は？【ReHacQ高橋弘樹vs今野忍vs後藤田正純】",
+   "published": "2026-11-27T11:43:28+00:00",
+   "url": "https://www.youtube.com/watch?v=GR_PLvs8SyE",
+   "description": "新たな視点で経済・社会を見つめ直すビジネス動画メディア「ReHacQ」！\n\n本日は徳島県知事・後藤田正純さんにお越しいただき、　\nなぜ県スポーツ協会について「潰す」と発言したのか？その真意は？\n独占でお話をお伺いします。\n\n出演者：後藤田正純（徳島県知事）\n　　　　今野忍\n　　　　高橋弘樹\n\n●ReHacQアプリ　登録お願いします！\n＜無料会員登録＞\n・iOS版URL\nhttps://apps.apple.com/jp/app/rehacq/id6738078112\n・Android版URL\nhttps://play.google.com/store/apps/details?id=jp.co.tonari.rehacq\n・WEB版URL\nhttps://rehacq.com/home\n\n＜有料会員登録はこちらから↓＞\nhttps://rehacq.com/settings/plan-list\n\n●Xでは今後のラインナップなどお知らせします！\nhttps://twitter.com/ReHacQ\n\n●番組タイアップ等のお問い合わせはこちら\nhttps://to-na-ri.jp/\n\n#徳島県知事 #後藤田正純 #徳島 #メディア #徳島新聞 #ReHacQ #リハック",
+   "channel_key": "rehacq",
+   "channel_name": "ReHacQ",
+   "status": "pending",
+   "attempts": 0,
+   "added_at": "2026-11-28T10:00:42Z",
+   "last_error": "配信前または配信中のため、終了後に要約します"
   },
   {
    "video_id": "EwEPsgJfsnk",
