@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-28T13:00:42Z",
+ "updated_at": "2026-11-28T14:00:41Z",
  "channels": [
   {
    "key": "tbs_bloomberg",
@@ -1097,7 +1097,7 @@
    "channel_key": "rehacq",
    "channel_name": "ReHacQ",
    "status": "pending",
-   "attempts": 1,
+   "attempts": 2,
    "added_at": "2026-11-28T10:00:42Z",
    "last_error": "HTTP 403: {'error': {'code': 403, 'message': 'The caller does not have permission', 'status': 'PERMISSION_DENIED'}}"
   },
