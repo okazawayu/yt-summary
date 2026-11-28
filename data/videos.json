@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-28T03:00:43Z",
+ "updated_at": "2026-11-28T04:00:40Z",
  "channels": [
   {
    "key": "tbs_bloomberg",
@@ -18,6 +18,19 @@
   }
  ],
  "videos": [
+  {
+   "video_id": "P8DE77Jrq3w",
+   "title": "【疲れが取れない理由は呼吸にある？】ぎっくり腰の真因は首にある？／座りながらできる1分改善ワーク／正しい呼吸法解説／横隔膜とリンパの関係性【PIVOT HEALTH】",
+   "published": "2026-11-28T03:00:30+00:00",
+   "url": "https://www.youtube.com/watch?v=P8DE77Jrq3w",
+   "description": "▼前編はこちら：https://youtu.be/2I_BW_1plW8\n\n━━━━━━━━━━━━━━━━━━━━\n▼【通勤・移動中に聴く】PIVOTアプリが便利\n・バックグラウンド再生（画面を閉じても聴ける）\n・ダウンロード機能（オフラインで再生）\n・音声再生（耳だけで学べる）\nすべて無料｜ダウンロードはこちら↓\nhttps://pivot.go.link/?adj_t=26qrk0n5&redirect=https://pivotmedia.co.jp/movie/15324\n━━━━━━━━━━━━━━━━━━━━\n視聴ごとにマイルが貯まり、図書カードなどの特典に応募できます。\n▼ 今月の特典一覧はこちら\nhttps://pivotmedia.co.jp/app/mile/benefit\n▼【5分で理解】 この動画の「記事」「AI要約」はこちら\nhttps://pivotmedia.co.jp/launch_app?path=movie/15324&display_type=article&override=true\n\n＜ゲスト＞\n中野ジェームズ修一｜フィジカルトレーナー\n米国スポーツ医学会認定運動生理学士。\nフィジカルトレーナー協会（PTI）代表理事。2014年からは青山学院大学駅伝チームのフィジカル強化指導も担当。\n会員制パーソナルトレーニング施設「CLUB100」の最高技術責任者を務める。\n\n＜参考書籍＞\n『すごい頸椎 首・肩・腰を一気によくする』\n中野ジェームズ修一（著）日経BP（刊）\nhttps://link.amazon/B0eN9eWKJ\n※上記リンクURLはAmazonアソシエイトのリンクを使用しています。\n\n＜目次＞\n00:00　ダイジェスト\n00:51　首の放置が招く呼吸と内臓の危機\n05:50　横隔膜を動かす呼吸エクササイズ\n11:00　頸椎の進化とぎっくり腰の構造\n17:45　座位骨盤リセットと首のケア\n\nサムネイル\n写真：iStock\n\n＜関連動画＞\nすごい股関節\nhttps://youtu.be/SYYAu6s9OTQ\n\n#頸椎 #スマホ首 #スマホ #健康 #リラックス #首回し #体重 #骨 #骨格 #タオル #ストレッチ #危険 #骨棘 #神経 #睡眠 #ピボット #pivot",
+   "channel_key": "pivot",
+   "channel_name": "PIVOT",
+   "status": "pending",
+   "attempts": 0,
+   "added_at": "2026-11-28T04:00:40Z",
+   "last_error": "429: {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limi"
+  },
   {
    "video_id": "Ek33YbjLFJU",
    "title": "【建設ブルーカラー年収1000万円のリアル】年収の伸び率は業界トップクラス／高専卒が大卒の初任給超え／実際どれくらい稼げる？／働き方はきつくないのか？",
