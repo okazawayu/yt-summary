@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-27T23:00:42Z",
+ "updated_at": "2026-11-28T00:00:42Z",
  "channels": [
   {
    "key": "tbs_bloomberg",
@@ -18,6 +18,19 @@
   }
  ],
  "videos": [
+  {
+   "video_id": "xCrxA8MUL-8",
+   "title": "【AI時代の言論危機】言論空間A、B、Cとは？／国家と生成AIによる支配／全てが週刊文春化／意見を支配する力／政治家のメディア化／言論空間Xの可能性／司会者の哲学／台本なしで話す／YouTubeが最強",
+   "published": "2026-11-27T23:00:06+00:00",
+   "url": "https://www.youtube.com/watch?v=xCrxA8MUL-8",
+   "description": "━━━━━━━━━━━━━━━━━━━━\n▼【通勤・移動中に聴く】PIVOTアプリが便利\n・バックグラウンド再生（画面を閉じても聴ける）\n・ダウンロード機能（オフラインで再生）\n・音声再生（耳だけで学べる）\nすべて無料｜ダウンロードはこちら↓\nhttps://pivot.go.link/?adj_t=26kr1fpu&redirect=https://pivotmedia.co.jp/movie/15330\n━━━━━━━━━━━━━━━━━━━━\n視聴ごとにマイルが貯まり、図書カードなどの特典に応募できます。\n▼ 今月の特典一覧はこちら\nhttps://pivotmedia.co.jp/app/mile/benefit\n▼【5分で理解】 この動画の「記事」「AI要約」はこちら\nhttps://pivotmedia.co.jp/launch_app?path=movie/15330&display_type=article&override=true\n\n＜ゲスト＞\n竹下隆一郎｜TBS CROSSDIG CCO\n2002年慶應義塾大学法学部政治学科卒業後、朝日新聞社入社。14年スタンフォード大学客員研究員、16年ハフィントンポスト（現・ハフポスト）日本版編集長。\n21年PIVOTに創業メンバーとして参画し、24年TBSテレビ特任執行役員に就任。\n\n＜参考書籍＞\n『AI時代の言論 変わるメディアと安全保障』\n竹下隆一郎（著）岩波書店（刊）\nhttps://link.amazon/B0fXA1kfp\n\n『福音派＝終末論に引き裂かれるアメリカ社会』\n加藤喜之（著）中央公論新社（刊）\nhttps://link.amazon/B0eLTC9dt\n※上記リンクURLはAmazonアソシエイトのリンクを使用しています。\n\n＜目次＞\n00:00　ダイジェスト\n01:00　100年に1度の危機\n04:40　言論空間A・B・C\n15:15　意見を支配する力\n24:32　言論空間Xと司会者\n34:07　司会者の哲学と公共性\n41:10　米政治とポッドキャスト\n47:06　日本の言論の生きる道\n\nサムネイル\n写真：iStock\n\n＜関連動画＞\n辞めPIVOT→TBS特任執行役員\nhttps://youtu.be/2r7OjFBzXMw\n\n#AI #言論 #SNS #メディア #危機 #イーロン・マスク #国家 #情報 #情報戦 #生成AI #NVIDIA #フェイク動画 #フェイク #動画 #司会 #資本主義 #中間選挙 #マスメディア #テック #ピボット #pivot",
+   "channel_key": "pivot",
+   "channel_name": "PIVOT",
+   "status": "pending",
+   "attempts": 0,
+   "added_at": "2026-11-28T00:00:42Z",
+   "last_error": "429: {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limi"
+  },
   {
    "video_id": "EwEPsgJfsnk",
    "title": "【北朝鮮は\"見返りが足りない\"とロシアに不満か】防衛研究所・兵頭慎治／米中ロ会談でプーチン氏が狙った “核大国\"の印象／日ロ関係は\"日本の態度次第\"／戦場はバルト海・地中海へ\"水平に\"拡大【1on1】",
